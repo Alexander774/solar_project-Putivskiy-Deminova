@@ -2,6 +2,8 @@
 # license: GPLv3
 
 import tkinter
+import pylab
+import math
 from tkinter.filedialog import *
 from solar_vis import *
 from solar_model import *
@@ -39,6 +41,16 @@ def execution():
         update_object_position(space, body)
     physical_time += time_step.get()
     displayed_time.set("%.1f" % physical_time + " seconds gone")
+
+    star = None
+    for obj in space_objects:
+        if obj.type == "star":
+            star = obj
+    for obj in space_objects:
+        if obj.type == "planet":
+            obj.statistic[0].append(physical_time)
+            obj.statistic[1].append(math.sqrt(obj.Vx ** 2 + obj.Vy ** 2))
+            obj.statistic[2].append(math.sqrt((obj.x - star.x) ** 2 + (obj.y - star.y) ** 2))
 
     if perform_execution:
         space.after(101 - int(time_speed.get()), execution)
@@ -97,14 +109,38 @@ def save_file_dialog():
     функцию считывания параметров системы небесных тел из данного файла.
     Считанные объекты сохраняются в глобальный список space_objects
     """
+
     out_filename = asksaveasfilename(filetypes=(("Text file", ".txt"),))
     write_space_objects_data_to_file(out_filename, space_objects)
+
+
+def graph():
+    in_filename = askopenfilename(filetypes=(("Text file", ".txt"),))
+    stat_arr = read_statistic(in_filename)
+
+    print(stat_arr[0][2])
+
+    for planet_stat in stat_arr:
+        pylab.subplot(2, 2, 1)
+        pylab.plot(planet_stat[0], planet_stat[1])
+        pylab.title("absolute velocity depending to time")
+
+        pylab.subplot(2, 2, 3)
+        pylab.plot(planet_stat[0], planet_stat[2])
+        pylab.title("distant to star depending to time")
+
+        pylab.subplot(1, 2, 2)
+        pylab.plot(planet_stat[2], planet_stat[1])
+        pylab.title("absolute velocity depending on distant to star")
+
+        pylab.show()
 
 
 def main():
     """Главная функция главного модуля.
     Создаёт объекты графического дизайна библиотеки tkinter: окно, холст, фрейм с кнопками, кнопки.
     """
+
     global physical_time
     global displayed_time
     global time_step
@@ -139,6 +175,8 @@ def main():
     load_file_button.pack(side=tkinter.LEFT)
     save_file_button = tkinter.Button(frame, text="Save to file...", command=save_file_dialog)
     save_file_button.pack(side=tkinter.LEFT)
+    graph_button = tkinter.Button(frame, text="Graph", command=graph)
+    graph_button.pack(side=tkinter.LEFT)
 
     displayed_time = tkinter.StringVar()
     displayed_time.set(str(physical_time) + " seconds gone")
